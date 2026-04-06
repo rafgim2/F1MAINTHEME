@@ -168,7 +168,7 @@ const screen = new THREE.Mesh(
     alphaTest: 0.02,
   })
 );
-screen.position.set(0, 1.55, -1.55);
+screen.position.set(0, 1.22, -1.55);
 scene.add(screen);
 
 const cornerTL = new THREE.Vector3();
@@ -280,7 +280,7 @@ tunnelBackdrop.visible = false;
 tunnelRoot.add(tunnelBackdrop);
 
 const ARCH_BASE_Y = -1.65;
-const archRadius = 4.40;
+const archRadius = 4.60;
 const ringCount = 56;
 const RING_SPACING = 1.55;
 const RING_NEAR_Z = 5.0;
@@ -288,7 +288,7 @@ const RING_FAR_Z = RING_NEAR_Z - (ringCount * RING_SPACING);
 const RING_TUNNEL_LENGTH = ringCount * RING_SPACING;
 const rings = [];
 for (let i=0;i<ringCount;i++){
-  const geo = new THREE.TorusGeometry(archRadius, 0.030, 14, 120, Math.PI);
+  const geo = new THREE.TorusGeometry(archRadius, 0.060, 18, 140, Math.PI);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x88dfff,
     transparent: true,
@@ -305,9 +305,9 @@ for (let i=0;i<ringCount;i++){
 const floorGroup = new THREE.Group();
 tunnelRoot.add(floorGroup);
 
-const floorWidth = 7.0;
-const floorDepth = 95.0;
-const floorY = -2.15;
+const floorWidth = archRadius * 2.02;
+const floorDepth = 108.0;
+const floorY = -2.32;
 const floorGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(floorWidth, floorDepth),
   new THREE.MeshBasicMaterial({
@@ -320,10 +320,10 @@ const floorGlow = new THREE.Mesh(
   })
 );
 floorGlow.rotation.x = -Math.PI/2;
-floorGlow.position.set(0, floorY, -11.5);
+floorGlow.position.set(0, floorY, -15.0);
 floorGroup.add(floorGlow);
 
-const floorLaneCount = 36;
+const floorLaneCount = 42;
 const floorLanes = [];
 for (let i=0;i<floorLaneCount;i++){
   const geo = new THREE.PlaneGeometry(0.05 + Math.random()*0.03, 1.5 + Math.random()*1.6);
