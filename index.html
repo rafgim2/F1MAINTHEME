@@ -256,7 +256,7 @@ let frameEnergy = 0;
 // ==================== TÚNEL ====================
 const tunnelRoot = new THREE.Group();
 scene.add(tunnelRoot);
-const TUNNEL_CENTER_Y = 0.45; // más bajo que los ojos para que el suelo quede por debajo
+const TUNNEL_CENTER_Y = 0.15; // centro más bajo y túnel más lejano
 
 const tunnelTexture = new THREE.TextureLoader().load(TUNNEL_IMAGE_URL);
 tunnelTexture.colorSpace = THREE.SRGBColorSpace;
@@ -275,14 +275,15 @@ const tunnelBackdrop = new THREE.Mesh(
     color: new THREE.Color("#7ddfff")
   })
 );
-tunnelBackdrop.position.set(0, TUNNEL_CENTER_Y, -10.0);
+tunnelBackdrop.position.set(0, TUNNEL_CENTER_Y, -60.0);
+tunnelBackdrop.visible = false;
 tunnelRoot.add(tunnelBackdrop);
 
-const ARCH_BASE_Y = -1.15;
-const archRadius = 3.50;
-const ringCount = 24;
-const RING_SPACING = 1.05;
-const RING_NEAR_Z = 2.8;
+const ARCH_BASE_Y = -1.65;
+const archRadius = 4.40;
+const ringCount = 56;
+const RING_SPACING = 1.55;
+const RING_NEAR_Z = 5.0;
 const RING_FAR_Z = RING_NEAR_Z - (ringCount * RING_SPACING);
 const RING_TUNNEL_LENGTH = ringCount * RING_SPACING;
 const rings = [];
@@ -305,8 +306,8 @@ const floorGroup = new THREE.Group();
 tunnelRoot.add(floorGroup);
 
 const floorWidth = 7.0;
-const floorDepth = 26.0;
-const floorY = -1.35;
+const floorDepth = 95.0;
+const floorY = -2.15;
 const floorGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(floorWidth, floorDepth),
   new THREE.MeshBasicMaterial({
@@ -322,7 +323,7 @@ floorGlow.rotation.x = -Math.PI/2;
 floorGlow.position.set(0, floorY, -11.5);
 floorGroup.add(floorGlow);
 
-const floorLaneCount = 22;
+const floorLaneCount = 36;
 const floorLanes = [];
 for (let i=0;i<floorLaneCount;i++){
   const geo = new THREE.PlaneGeometry(0.05 + Math.random()*0.03, 1.5 + Math.random()*1.6);
@@ -344,13 +345,13 @@ for (let i=0;i<floorLaneCount;i++){
 function resetFloorLane(mesh, initial=false){
   const xBands = [-1.9,-1.35,-0.9,-0.45,0,0.45,0.9,1.35,1.9];
   const x = xBands[(Math.random()*xBands.length)|0] + (Math.random()-0.5)*0.08;
-  const z = initial ? (-1.5 - Math.random()*22.0) : (-18.0 - Math.random()*8.0);
+  const z = initial ? (-4.0 - Math.random()*85.0) : (-85.0 - Math.random()*18.0);
   mesh.position.set(x, floorY + 0.01, z);
   mesh.userData.speedMul = 0.85 + Math.random()*1.4;
   mesh.userData.x = x;
 }
 
-const streakCount = 72;
+const streakCount = 110;
 const streaks = [];
 for (let i=0;i<streakCount;i++){
   const geo = new THREE.CylinderGeometry(0.008, 0.008, 0.85, 6);
@@ -370,7 +371,7 @@ for (let i=0;i<streakCount;i++){
 function resetStreak(mesh, initial=false){
   const angle = Math.random() * Math.PI * 2;
   const radius = 0.9 + Math.random() * 2.9;
-  const z = initial ? (-1.5 - Math.random()*18.0) : (-16.0 - Math.random()*6.0);
+  const z = initial ? (-5.0 - Math.random()*90.0) : (-92.0 - Math.random()*18.0);
   mesh.position.set(Math.cos(angle)*radius, ARCH_BASE_Y + 0.55 + Math.sin(angle)*radius*0.88, z);
   mesh.rotation.z = angle + Math.PI / 2;
   const s = 0.55 + Math.random()*1.4;
@@ -380,7 +381,7 @@ function resetStreak(mesh, initial=false){
   mesh.userData.angle = angle;
 }
 
-const starCount = 140;
+const starCount = 220;
 const starGeo = new THREE.BufferGeometry();
 const starPositions = new Float32Array(starCount * 3);
 for (let i=0;i<starCount;i++){
@@ -388,7 +389,7 @@ for (let i=0;i<starCount;i++){
   const radius = 1.5 + Math.random() * 7.5;
   starPositions[i*3+0] = Math.cos(angle) * radius;
   starPositions[i*3+1] = TUNNEL_CENTER_Y + (Math.random()-0.5) * 5.4;
-  starPositions[i*3+2] = -2.0 - Math.random() * 24.0;
+  starPositions[i*3+2] = -8.0 - Math.random() * 105.0;
 }
 starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
 const starMat = new THREE.PointsMaterial({
@@ -440,11 +441,11 @@ function updateTunnel(dt, t){
 
   const pulse = 1.0 + frameEnergy * 0.45;
   tunnelBackdrop.material.color.copy(tunnelState.primary);
-  tunnelBackdrop.material.opacity = 0.30 + tunnelState.boost * 0.16 + frameEnergy * 0.12;
+  tunnelBackdrop.material.opacity = 0.0;
   tunnelBackdrop.rotation.z = Math.sin(t * 0.07) * 0.05;
   tunnelBackdrop.scale.setScalar(1.0 + Math.sin(t * 0.35) * 0.015);
 
-  const ringSpeed = 4.6 + tunnelState.speed * 3.6;
+  const ringSpeed = 1.25 + tunnelState.speed * 1.15;
   for (let i=0;i<rings.length;i++){
     const ring = rings[i];
     ring.position.z += dt * ringSpeed;
@@ -452,24 +453,24 @@ function updateTunnel(dt, t){
     const zNorm = THREE.MathUtils.clamp((ring.position.z - RING_FAR_Z) / (RING_NEAR_Z - RING_FAR_Z), 0, 1);
     ring.scale.setScalar(1.0);
     ring.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, (i % 6) / 5);
-    ring.material.opacity = (0.18 + zNorm*0.30) * (0.95 + frameEnergy*0.35);
+    ring.material.opacity = (0.10 + zNorm*0.26) * (0.96 + frameEnergy*0.18);
   }
 
   floorGlow.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, 0.2);
   floorGlow.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
-  floorGlow.position.z = -11.5 + Math.sin(t * 0.45) * 0.15;
+  floorGlow.position.z = -42.0 + Math.sin(t * 0.18) * 0.12;
 
   for (const lane of floorLanes){
-    lane.position.z += dt * (6.2 + tunnelState.speed * 8.8) * lane.userData.speedMul;
-    if (lane.position.z > 2.5) resetFloorLane(lane, false);
-    lane.position.x = lane.userData.x * (1.0 + Math.max(0, lane.position.z + 2.0) * 0.012);
+    lane.position.z += dt * (1.9 + tunnelState.speed * 1.8) * lane.userData.speedMul;
+    if (lane.position.z > 4.8) resetFloorLane(lane, false);
+    lane.position.x = lane.userData.x * (1.0 + Math.max(0, lane.position.z + 3.0) * 0.009);
     lane.material.color.copy(tunnelState.accent);
     lane.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
   }
 
   for (const streak of streaks){
-    streak.position.z += dt * (5.0 + tunnelState.speed * 6.5) * streak.userData.speedMul;
-    if (streak.position.z > 2.4) resetStreak(streak, false);
+    streak.position.z += dt * (1.6 + tunnelState.speed * 1.6) * streak.userData.speedMul;
+    if (streak.position.z > 4.8) resetStreak(streak, false);
     streak.material.color.copy(tunnelState.accent);
     streak.material.opacity = 0.10 + tunnelState.boost * 0.08 + frameEnergy * 0.12;
   }
