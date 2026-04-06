@@ -278,23 +278,72 @@ const tunnelBackdrop = new THREE.Mesh(
 tunnelBackdrop.position.set(0, TUNNEL_CENTER_Y, -10.0);
 tunnelRoot.add(tunnelBackdrop);
 
-const ringCount = 22;
+const ARCH_BASE_Y = -0.95;
+const archRadius = 2.65;
+const ringCount = 24;
 const rings = [];
 for (let i=0;i<ringCount;i++){
-  const radius = 1.35 + i * 0.12;
-  const geo = new THREE.TorusGeometry(radius, 0.028, 20, 110);
+  const geo = new THREE.TorusGeometry(archRadius, 0.030, 14, 120, Math.PI);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x88dfff,
     transparent: true,
-    opacity: Math.max(0.10, 0.58 - i*0.02),
+    opacity: Math.max(0.12, 0.60 - i*0.018),
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
   const ring = new THREE.Mesh(geo, mat);
-  ring.position.set(0, TUNNEL_CENTER_Y, -1.8 - i * 0.95);
-  ring.scale.y = 1.18;
+  ring.position.set(0, ARCH_BASE_Y, -2.2 - i * 0.95);
   tunnelRoot.add(ring);
   rings.push(ring);
+}
+
+const floorGroup = new THREE.Group();
+tunnelRoot.add(floorGroup);
+
+const floorWidth = 7.0;
+const floorDepth = 26.0;
+const floorY = -1.02;
+const floorGlow = new THREE.Mesh(
+  new THREE.PlaneGeometry(floorWidth, floorDepth),
+  new THREE.MeshBasicMaterial({
+    color: 0x58dfff,
+    transparent: true,
+    opacity: 0.16,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide
+  })
+);
+floorGlow.rotation.x = -Math.PI/2;
+floorGlow.position.set(0, floorY, -11.5);
+floorGroup.add(floorGlow);
+
+const floorLaneCount = 22;
+const floorLanes = [];
+for (let i=0;i<floorLaneCount;i++){
+  const geo = new THREE.PlaneGeometry(0.05 + Math.random()*0.03, 1.5 + Math.random()*1.6);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xb8fbff,
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide
+  });
+  const lane = new THREE.Mesh(geo, mat);
+  lane.rotation.x = -Math.PI/2;
+  resetFloorLane(lane, true);
+  floorGroup.add(lane);
+  floorLanes.push(lane);
+}
+
+function resetFloorLane(mesh, initial=false){
+  const xBands = [-1.9,-1.35,-0.9,-0.45,0,0.45,0.9,1.35,1.9];
+  const x = xBands[(Math.random()*xBands.length)|0] + (Math.random()-0.5)*0.08;
+  const z = initial ? (-1.5 - Math.random()*22.0) : (-18.0 - Math.random()*8.0);
+  mesh.position.set(x, floorY + 0.01, z);
+  mesh.userData.speedMul = 0.85 + Math.random()*1.4;
+  mesh.userData.x = x;
 }
 
 const streakCount = 72;
@@ -318,7 +367,7 @@ function resetStreak(mesh, initial=false){
   const angle = Math.random() * Math.PI * 2;
   const radius = 0.6 + Math.random() * 2.4;
   const z = initial ? (-1.5 - Math.random()*18.0) : (-16.0 - Math.random()*6.0);
-  mesh.position.set(Math.cos(angle)*radius, TUNNEL_CENTER_Y + Math.sin(angle)*radius*0.72, z);
+  mesh.position.set(Math.cos(angle)*radius, ARCH_BASE_Y + 0.35 + Math.sin(angle)*radius*0.78, z);
   mesh.rotation.z = angle + Math.PI / 2;
   const s = 0.55 + Math.random()*1.4;
   mesh.scale.set(1, s, 1);
@@ -387,19 +436,31 @@ function updateTunnel(dt, t){
 
   const pulse = 1.0 + frameEnergy * 0.45;
   tunnelBackdrop.material.color.copy(tunnelState.primary);
-  tunnelBackdrop.material.opacity = 0.36 + tunnelState.boost * 0.18 + frameEnergy * 0.12;
+  tunnelBackdrop.material.opacity = 0.30 + tunnelState.boost * 0.16 + frameEnergy * 0.12;
   tunnelBackdrop.rotation.z = Math.sin(t * 0.07) * 0.05;
   tunnelBackdrop.scale.setScalar(1.0 + Math.sin(t * 0.35) * 0.015);
 
   for (let i=0;i<rings.length;i++){
     const ring = rings[i];
-    ring.position.z += dt * (1.8 + tunnelState.speed * 2.5) * (1.0 + i*0.012);
-    if (ring.position.z > 2.2) ring.position.z = -21.0;
-    const zNorm = THREE.MathUtils.clamp((ring.position.z + 21.0) / 23.2, 0, 1);
-    const s = 1.0 + (1.0-zNorm) * 0.10 * pulse;
-    ring.scale.set(s, s * 1.18, s);
-    ring.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, (i % 5) / 4);
-    ring.material.opacity = (0.18 + (1.0-zNorm)*0.38) * (0.90 + frameEnergy*0.55);
+    ring.position.z += dt * (2.1 + tunnelState.speed * 3.2) * (1.0 + i*0.01);
+    if (ring.position.z > 2.8) ring.position.z = -22.5;
+    const zNorm = THREE.MathUtils.clamp((ring.position.z + 22.5) / 25.3, 0, 1);
+    const s = 1.0 + (1.0-zNorm) * 0.04 * pulse;
+    ring.scale.setScalar(s);
+    ring.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, (i % 6) / 5);
+    ring.material.opacity = (0.22 + (1.0-zNorm)*0.34) * (0.95 + frameEnergy*0.55);
+  }
+
+  floorGlow.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, 0.2);
+  floorGlow.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
+  floorGlow.position.z = -11.5 + Math.sin(t * 0.45) * 0.15;
+
+  for (const lane of floorLanes){
+    lane.position.z += dt * (6.2 + tunnelState.speed * 8.8) * lane.userData.speedMul;
+    if (lane.position.z > 2.5) resetFloorLane(lane, false);
+    lane.position.x = lane.userData.x * (1.0 + Math.max(0, lane.position.z + 2.0) * 0.012);
+    lane.material.color.copy(tunnelState.accent);
+    lane.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
   }
 
   for (const streak of streaks){
@@ -864,7 +925,8 @@ function resetExperienceState(){
   resetMidiHapticsState();
   resetParticlesState();
   frameEnergy = 0;
-  for (let i=0;i<rings.length;i++) rings[i].position.z = -1.8 - i * 0.95;
+  for (let i=0;i<rings.length;i++) rings[i].position.z = -2.2 - i * 0.95;
+  for (const lane of floorLanes) resetFloorLane(lane, true);
   for (const s of streaks) resetStreak(s, true);
 }
 
