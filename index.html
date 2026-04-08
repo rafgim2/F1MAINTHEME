@@ -223,14 +223,14 @@ const verticalScreen = new THREE.Mesh(
     map: videoVerticalTex,
     alphaMap: videoMaskTex,
     transparent: true,
-    opacity: 1,
+    opacity: 0.90,
     alphaTest: 0.0,
     depthWrite: false,
     depthTest: false,
     toneMapped: false,
   })
 );
-verticalScreen.renderOrder = 10000;
+verticalScreen.renderOrder = 10002;
 verticalScreen.position.set(0, 1.46, -1.80);
 verticalScreen.visible = false;
 scene.add(verticalScreen);
