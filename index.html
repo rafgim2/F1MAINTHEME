@@ -316,7 +316,7 @@ for (let i=0;i<ringCount;i++){
 const floorGroup = new THREE.Group();
 tunnelRoot.add(floorGroup);
 
-const floorY = -2.32;
+const floorY = -2.18;
 const floorNearZ = 5.2;
 const floorFarZ = -132.0;
 const floorWidthOverscan = 1.028;
@@ -404,35 +404,35 @@ function resetFloorLane(mesh, initial=false){
   mesh.userData.laneNorm = laneNorm;
 }
 
-const streakCount = 360;
+const streakCount = 260;
 const streaks = [];
 for (let i=0;i<streakCount;i++){
-  const geo = new THREE.CylinderGeometry(0.012, 0.012, 1.75, 6);
+  const geo = new THREE.PlaneGeometry(0.028 + Math.random()*0.018, 2.6 + Math.random()*2.6);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x6be2ff,
     transparent: true,
-    opacity: 0.22,
+    opacity: 0.24,
     depthWrite: false,
-    blending: THREE.AdditiveBlending
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide
   });
   const streak = new THREE.Mesh(geo, mat);
+  streak.rotation.x = -Math.PI / 2;
   resetStreak(streak, true);
   tunnelRoot.add(streak);
   streaks.push(streak);
 }
 
 function resetStreak(mesh, initial=false){
-  const angle = Math.random() * Math.PI * 2;
-  const radius = 0.9 + Math.random() * 2.9;
   const z = initial ? (-5.0 - Math.random()*146.0) : (-146.0 - Math.random()*34.0);
-  mesh.position.set(Math.cos(angle)*radius, ARCH_BASE_Y + 0.55 + Math.sin(angle)*radius*0.88, z);
-  mesh.rotation.z = angle + Math.PI / 2;
-  const s = 0.95 + Math.random()*1.55;
-  mesh.scale.set(1, s, 1);
-  mesh.userData.baseLen = s;
-  mesh.userData.speedMul = 0.42 + Math.random()*0.95;
-  mesh.userData.radius = radius;
-  mesh.userData.angle = angle;
+  const halfW = Math.max(0.08, floorHalfWidthAtZ(z) - 0.14);
+  const laneNorm = (Math.random()*2 - 1);
+  mesh.position.set(laneNorm * halfW * 0.985, floorY + 0.02, z);
+  const len = 0.85 + Math.random()*2.25;
+  mesh.scale.set(1, len, 1);
+  mesh.userData.baseLen = len;
+  mesh.userData.speedMul = 0.36 + Math.random()*0.58;
+  mesh.userData.laneNorm = laneNorm;
 }
 
 const starCount = 420;
@@ -526,17 +526,17 @@ function updateTunnel(dt, t){
   }
 
   for (const streak of streaks){
-    streak.position.z += dt * (0.95 + tunnelState.speed * 1.05) * streak.userData.speedMul;
+    streak.position.z += dt * (0.48 + tunnelState.speed * 0.92) * streak.userData.speedMul;
     if (streak.position.z > 5.5) resetStreak(streak, false);
-    const zNorm = THREE.MathUtils.clamp((streak.position.z + 164.0) / 169.0, 0, 1);
-    const rScale = THREE.MathUtils.lerp(0.42, 1.55, Math.pow(zNorm, 1.18));
-    const depthSpread = THREE.MathUtils.lerp(0.34, 1.02, Math.pow(zNorm, 1.45));
-    const lenScale = THREE.MathUtils.lerp(0.95, 1.75, zNorm) * streak.userData.baseLen;
-    streak.scale.set(rScale, lenScale, rScale);
-    streak.position.x = Math.cos(streak.userData.angle) * streak.userData.radius * depthSpread;
-    streak.position.y = ARCH_BASE_Y + 0.55 + Math.sin(streak.userData.angle)*streak.userData.radius*0.88*depthSpread;
+    const zNorm = THREE.MathUtils.clamp((streak.position.z - floorFarZ) / (floorNearZ - floorFarZ), 0, 1);
+    const halfW = Math.max(0.08, floorHalfWidthAtZ(streak.position.z) - 0.12);
+    streak.position.x = streak.userData.laneNorm * halfW * 0.985;
+    streak.position.y = floorY + 0.02;
+    const widthScale = THREE.MathUtils.lerp(0.65, 1.35, Math.pow(zNorm, 1.1));
+    const lenScale = THREE.MathUtils.lerp(0.75, 1.6, zNorm) * streak.userData.baseLen;
+    streak.scale.set(widthScale, lenScale, 1);
     streak.material.color.copy(tunnelState.accent);
-    streak.material.opacity = 0.14 + tunnelState.boost * 0.13 + frameEnergy * 0.16;
+    streak.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.12 + zNorm * 0.12;
   }
 
   starMat.color.copy(tunnelState.accent);
