@@ -86,8 +86,9 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = null;
+scene.fog = new THREE.Fog(0x03060b, 18, 145);
 
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 60);
+const camera = new THREE.PerspectiveCamera(92, innerWidth/innerHeight, 0.1, 180);
 camera.position.set(0, 1.6, 2);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x111111, 1.2));
@@ -285,14 +286,14 @@ const tunnelBackdrop = new THREE.Mesh(
     color: new THREE.Color("#7ddfff")
   })
 );
-tunnelBackdrop.position.set(0, TUNNEL_CENTER_Y, -60.0);
+tunnelBackdrop.position.set(0, TUNNEL_CENTER_Y, -118.0);
 tunnelBackdrop.visible = false;
 tunnelRoot.add(tunnelBackdrop);
 
 const ARCH_BASE_Y = -1.65;
 const archRadius = 4.60;
-const ringCount = 56;
-const RING_SPACING = 1.55;
+const ringCount = 92;
+const RING_SPACING = 1.42;
 const RING_NEAR_Z = 5.0;
 const RING_FAR_Z = RING_NEAR_Z - (ringCount * RING_SPACING);
 const RING_TUNNEL_LENGTH = ringCount * RING_SPACING;
@@ -316,7 +317,7 @@ const floorGroup = new THREE.Group();
 tunnelRoot.add(floorGroup);
 
 const floorWidth = archRadius * 2.02;
-const floorDepth = 108.0;
+const floorDepth = 160.0;
 const floorY = -2.32;
 const floorGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(floorWidth, floorDepth),
@@ -330,10 +331,10 @@ const floorGlow = new THREE.Mesh(
   })
 );
 floorGlow.rotation.x = -Math.PI/2;
-floorGlow.position.set(0, floorY, -15.0);
+floorGlow.position.set(0, floorY, -46.0);
 floorGroup.add(floorGlow);
 
-const floorLaneCount = 42;
+const floorLaneCount = 56;
 const floorLanes = [];
 for (let i=0;i<floorLaneCount;i++){
   const geo = new THREE.PlaneGeometry(0.05 + Math.random()*0.03, 1.5 + Math.random()*1.6);
@@ -355,13 +356,13 @@ for (let i=0;i<floorLaneCount;i++){
 function resetFloorLane(mesh, initial=false){
   const xBands = [-1.9,-1.35,-0.9,-0.45,0,0.45,0.9,1.35,1.9];
   const x = xBands[(Math.random()*xBands.length)|0] + (Math.random()-0.5)*0.08;
-  const z = initial ? (-4.0 - Math.random()*85.0) : (-85.0 - Math.random()*18.0);
+  const z = initial ? (-4.0 - Math.random()*125.0) : (-125.0 - Math.random()*24.0);
   mesh.position.set(x, floorY + 0.01, z);
   mesh.userData.speedMul = 0.85 + Math.random()*1.4;
   mesh.userData.x = x;
 }
 
-const streakCount = 110;
+const streakCount = 170;
 const streaks = [];
 for (let i=0;i<streakCount;i++){
   const geo = new THREE.CylinderGeometry(0.008, 0.008, 0.85, 6);
@@ -381,7 +382,7 @@ for (let i=0;i<streakCount;i++){
 function resetStreak(mesh, initial=false){
   const angle = Math.random() * Math.PI * 2;
   const radius = 0.9 + Math.random() * 2.9;
-  const z = initial ? (-5.0 - Math.random()*90.0) : (-92.0 - Math.random()*18.0);
+  const z = initial ? (-5.0 - Math.random()*132.0) : (-132.0 - Math.random()*24.0);
   mesh.position.set(Math.cos(angle)*radius, ARCH_BASE_Y + 0.55 + Math.sin(angle)*radius*0.88, z);
   mesh.rotation.z = angle + Math.PI / 2;
   const s = 0.55 + Math.random()*1.4;
@@ -391,7 +392,7 @@ function resetStreak(mesh, initial=false){
   mesh.userData.angle = angle;
 }
 
-const starCount = 220;
+const starCount = 320;
 const starGeo = new THREE.BufferGeometry();
 const starPositions = new Float32Array(starCount * 3);
 for (let i=0;i<starCount;i++){
@@ -399,7 +400,7 @@ for (let i=0;i<starCount;i++){
   const radius = 1.5 + Math.random() * 7.5;
   starPositions[i*3+0] = Math.cos(angle) * radius;
   starPositions[i*3+1] = TUNNEL_CENTER_Y + (Math.random()-0.5) * 5.4;
-  starPositions[i*3+2] = -8.0 - Math.random() * 105.0;
+  starPositions[i*3+2] = -10.0 - Math.random() * 150.0;
 }
 starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
 const starMat = new THREE.PointsMaterial({
@@ -455,38 +456,48 @@ function updateTunnel(dt, t){
   tunnelBackdrop.rotation.z = Math.sin(t * 0.07) * 0.05;
   tunnelBackdrop.scale.setScalar(1.0 + Math.sin(t * 0.35) * 0.015);
 
-  const ringSpeed = 1.25 + tunnelState.speed * 1.15;
+  const ringSpeed = 1.28 + tunnelState.speed * 1.22;
   for (let i=0;i<rings.length;i++){
     const ring = rings[i];
     ring.position.z += dt * ringSpeed;
     if (ring.position.z > RING_NEAR_Z) ring.position.z -= RING_TUNNEL_LENGTH;
     const zNorm = THREE.MathUtils.clamp((ring.position.z - RING_FAR_Z) / (RING_NEAR_Z - RING_FAR_Z), 0, 1);
-    ring.scale.setScalar(1.0);
+    const perspectiveScale = THREE.MathUtils.lerp(0.18, 1.28, Math.pow(zNorm, 1.55));
+    ring.scale.setScalar(perspectiveScale);
     ring.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, (i % 6) / 5);
-    ring.material.opacity = (0.10 + zNorm*0.26) * (0.96 + frameEnergy*0.18);
+    ring.material.opacity = (0.04 + zNorm*0.34) * (0.92 + frameEnergy*0.22);
   }
 
   floorGlow.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, 0.2);
-  floorGlow.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
-  floorGlow.position.z = -42.0 + Math.sin(t * 0.18) * 0.12;
+  floorGlow.material.opacity = 0.08 + tunnelState.boost * 0.10 + frameEnergy * 0.14;
+  floorGlow.position.z = -62.0 + Math.sin(t * 0.18) * 0.12;
+  floorGlow.scale.x = 1.0;
+  floorGlow.scale.y = 1.0;
 
   for (const lane of floorLanes){
-    lane.position.z += dt * (1.9 + tunnelState.speed * 1.8) * lane.userData.speedMul;
+    lane.position.z += dt * (2.1 + tunnelState.speed * 2.0) * lane.userData.speedMul;
     if (lane.position.z > 4.8) resetFloorLane(lane, false);
-    lane.position.x = lane.userData.x * (1.0 + Math.max(0, lane.position.z + 3.0) * 0.009);
+    const zStretch = 1.0 + Math.max(0, lane.position.z + 4.0) * 0.010;
+    lane.position.x = lane.userData.x * zStretch;
+    lane.scale.setScalar(THREE.MathUtils.lerp(0.55, 1.35, Math.pow(THREE.MathUtils.clamp((lane.position.z + 145.0)/150.0, 0, 1), 1.3)));
     lane.material.color.copy(tunnelState.accent);
-    lane.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.16;
+    lane.material.opacity = 0.08 + tunnelState.boost * 0.10 + frameEnergy * 0.15;
   }
 
   for (const streak of streaks){
-    streak.position.z += dt * (1.6 + tunnelState.speed * 1.6) * streak.userData.speedMul;
+    streak.position.z += dt * (1.8 + tunnelState.speed * 1.8) * streak.userData.speedMul;
     if (streak.position.z > 4.8) resetStreak(streak, false);
+    const zNorm = THREE.MathUtils.clamp((streak.position.z + 150.0) / 155.0, 0, 1);
+    const rScale = THREE.MathUtils.lerp(0.35, 1.2, Math.pow(zNorm, 1.4));
+    streak.scale.set(rScale, streak.scale.y, rScale);
+    streak.position.x = Math.cos(streak.userData.angle) * streak.userData.radius * THREE.MathUtils.lerp(0.35, 1.0, Math.pow(zNorm, 1.55));
+    streak.position.y = ARCH_BASE_Y + 0.55 + Math.sin(streak.userData.angle)*streak.userData.radius*0.88*THREE.MathUtils.lerp(0.35, 1.0, Math.pow(zNorm, 1.55));
     streak.material.color.copy(tunnelState.accent);
-    streak.material.opacity = 0.10 + tunnelState.boost * 0.08 + frameEnergy * 0.12;
+    streak.material.opacity = 0.06 + tunnelState.boost * 0.09 + frameEnergy * 0.12;
   }
 
   starMat.color.copy(tunnelState.accent);
-  starMat.opacity = 0.48 + tunnelState.boost * 0.15;
+  starMat.opacity = 0.32 + tunnelState.boost * 0.12;
 }
 
 // ==================== CONTROLLERS / HÁPTICA ====================
@@ -940,7 +951,10 @@ function resetExperienceState(){
   resetMidiHapticsState();
   resetParticlesState();
   frameEnergy = 0;
-  for (let i=0;i<rings.length;i++) rings[i].position.z = RING_NEAR_Z - i * RING_SPACING;
+  for (let i=0;i<rings.length;i++) {
+    rings[i].position.z = RING_NEAR_Z - i * RING_SPACING;
+    rings[i].scale.setScalar(THREE.MathUtils.lerp(1.28, 0.18, i / Math.max(1, rings.length - 1)));
+  }
   for (const lane of floorLanes) resetFloorLane(lane, true);
   for (const s of streaks) resetStreak(s, true);
 }
