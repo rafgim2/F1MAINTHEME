@@ -133,6 +133,9 @@ let audioAnalyser = null;
 let audioFreqData = null;
 let audioReady = false;
 let lastBass = 0;
+let lastMid = 0;
+let lastHigh = 0;
+let lastLevel = 0;
 const audioState = {
   bass: 0,
   mid: 0,
@@ -151,8 +154,8 @@ async function ensureAudioReactive(){
   if (!audioSourceNode){
     audioSourceNode = audioCtx.createMediaElementSource(video);
     audioAnalyser = audioCtx.createAnalyser();
-    audioAnalyser.fftSize = 256;
-    audioAnalyser.smoothingTimeConstant = 0.72;
+    audioAnalyser.fftSize = 512;
+    audioAnalyser.smoothingTimeConstant = 0.38;
     audioFreqData = new Uint8Array(audioAnalyser.frequencyBinCount);
     audioSourceNode.connect(audioAnalyser);
     audioAnalyser.connect(audioCtx.destination);
@@ -178,27 +181,41 @@ function averageFreqRange(startBin, endBin){
 
 function updateAudioReactive(dt){
   if (!audioReady || !audioAnalyser || !audioFreqData) {
-    audioState.flash *= Math.exp(-dt * 8.0);
+    audioState.flash *= Math.exp(-dt * 11.0);
     return;
   }
   audioAnalyser.getByteFrequencyData(audioFreqData);
-  const bass = averageFreqRange(1, 8);
-  const mid  = averageFreqRange(8, 28);
-  const high = averageFreqRange(28, 64);
-  const level = averageFreqRange(1, 64);
-  const onsetRaw = Math.max(0, bass - (lastBass * 0.90) - 0.018);
+  const bass = averageFreqRange(1, 10);
+  const mid  = averageFreqRange(10, 44);
+  const high = averageFreqRange(44, 120);
+  const level = averageFreqRange(1, 120);
+
+  const bassJump = Math.max(0, bass - lastBass * 0.82 - 0.010);
+  const midJump = Math.max(0, mid - lastMid * 0.80 - 0.008);
+  const highJump = Math.max(0, high - lastHigh * 0.78 - 0.008);
+  const levelJump = Math.max(0, level - lastLevel * 0.84 - 0.008);
+  const onsetRaw = Math.max(
+    bassJump * 1.25,
+    midJump * 1.05,
+    highJump * 0.85,
+    levelJump * 1.10
+  );
+
   lastBass = bass;
+  lastMid = mid;
+  lastHigh = high;
+  lastLevel = level;
 
-  audioState.bass = THREE.MathUtils.lerp(audioState.bass, bass, 0.35);
-  audioState.mid = THREE.MathUtils.lerp(audioState.mid, mid, 0.25);
-  audioState.high = THREE.MathUtils.lerp(audioState.high, high, 0.25);
-  audioState.level = THREE.MathUtils.lerp(audioState.level, level, 0.22);
+  audioState.bass = THREE.MathUtils.lerp(audioState.bass, bass, 0.58);
+  audioState.mid = THREE.MathUtils.lerp(audioState.mid, mid, 0.48);
+  audioState.high = THREE.MathUtils.lerp(audioState.high, high, 0.52);
+  audioState.level = THREE.MathUtils.lerp(audioState.level, level, 0.44);
   audioState.onset = onsetRaw;
-  audioState.flash *= Math.exp(-dt * 9.5);
-  audioState.flash = Math.max(audioState.flash, Math.min(1.0, onsetRaw * 7.5 + bass * 0.55));
-  audioState.phase += dt * (0.8 + audioState.level * 2.2 + audioState.flash * 3.5);
+  audioState.flash *= Math.exp(-dt * 18.0);
+  audioState.flash = Math.max(audioState.flash, Math.min(1.0, onsetRaw * 14.0 + bass * 0.30 + mid * 0.22 + high * 0.12));
+  audioState.phase += dt * (1.8 + audioState.level * 5.5 + audioState.flash * 10.0 + audioState.mid * 2.5);
 
-  const audioBoost = audioState.level * 0.42 + audioState.flash * 0.85;
+  const audioBoost = audioState.level * 0.60 + audioState.flash * 1.10 + onsetRaw * 0.55;
   frameEnergy = Math.max(frameEnergy, Math.min(1.0, audioBoost));
 }
 
@@ -784,21 +801,22 @@ function updateTunnelPalette(t){
   tmpC2.set(b.accent || a.accent);
   const baseAccent = tmpC1.clone().lerp(tmpC2, mix);
 
-  const beatMix = THREE.MathUtils.clamp(audioState.flash * 0.85 + audioState.bass * 0.30, 0, 1);
-  const shimmerMix = THREE.MathUtils.clamp(audioState.high * 0.45 + audioState.level * 0.20, 0, 0.65);
-  const hueDrift = Math.sin(audioState.phase * 1.7) * 0.010 + Math.sin(audioState.phase * 0.53) * 0.006;
+  const beatMix = THREE.MathUtils.clamp(audioState.flash * 1.10 + audioState.bass * 0.55 + audioState.mid * 0.25, 0, 1);
+  const shimmerMix = THREE.MathUtils.clamp(audioState.high * 0.70 + audioState.level * 0.30, 0, 0.95);
+  const hueDrift = Math.sin(audioState.phase * 2.8) * 0.030 + Math.sin(audioState.phase * 0.95) * 0.018;
+  const beatHuePush = audioState.flash * 0.055 + audioState.onset * 0.090;
 
-  tmpC3.copy(basePrimary).lerp(baseAccent, 0.22 + beatMix * 0.58);
-  tmpC3.offsetHSL(hueDrift, 0.0, audioState.flash * 0.05 + audioState.level * 0.02);
+  tmpC3.copy(basePrimary).lerp(baseAccent, 0.12 + beatMix * 0.82);
+  tmpC3.offsetHSL(hueDrift + beatHuePush, 0.0, audioState.flash * 0.10 + audioState.level * 0.04);
 
-  tmpC4.copy(baseAccent).lerp(basePrimary, 0.18 + audioState.mid * 0.22);
-  tmpC4.lerp(new THREE.Color(0xffffff), 0.05 + shimmerMix * 0.24);
-  tmpC4.offsetHSL(-hueDrift * 0.65, 0.0, audioState.high * 0.04);
+  tmpC4.copy(baseAccent).lerp(basePrimary, 0.10 + audioState.mid * 0.46 + beatMix * 0.20);
+  tmpC4.lerp(new THREE.Color(0xffffff), 0.08 + shimmerMix * 0.30);
+  tmpC4.offsetHSL(-hueDrift * 0.90 - beatHuePush * 0.55, 0.0, audioState.high * 0.08 + audioState.flash * 0.04);
 
   tunnelState.primary.copy(tmpC3);
   tunnelState.accent.copy(tmpC4);
-  tunnelState.speed = THREE.MathUtils.lerp(a.speed, (b?.speed ?? a.speed), mix) + audioState.bass * 0.10;
-  tunnelState.boost = THREE.MathUtils.lerp(a.boost, (b?.boost ?? a.boost), mix) + audioState.flash * 0.12 + audioState.level * 0.05;
+  tunnelState.speed = THREE.MathUtils.lerp(a.speed, (b?.speed ?? a.speed), mix) + audioState.bass * 0.18 + audioState.flash * 0.08;
+  tunnelState.boost = THREE.MathUtils.lerp(a.boost, (b?.boost ?? a.boost), mix) + audioState.flash * 0.26 + audioState.level * 0.12 + audioState.high * 0.06;
 }
 
 function updateTunnel(dt, t){
@@ -1083,13 +1101,13 @@ function pickTarget(isRight){ return isRight ? cornerTR : cornerTL; }
 function pickMobileSpawn(isRight){ return isRight ? cornerBR : cornerBL; }
 
 function setParticleColor(i, isRightSide){
-  const beatMix = THREE.MathUtils.clamp(audioState.flash * 0.80 + audioState.level * 0.25, 0, 1);
-  const shimmer = THREE.MathUtils.clamp(audioState.high * 0.55, 0, 0.55);
+  const beatMix = THREE.MathUtils.clamp(audioState.flash * 1.00 + audioState.level * 0.38 + audioState.mid * 0.18, 0, 1);
+  const shimmer = THREE.MathUtils.clamp(audioState.high * 0.85 + audioState.flash * 0.18, 0, 0.85);
   tmpC1.copy(isRightSide ? tunnelState.accent : tunnelState.primary);
   tmpC2.copy(isRightSide ? tunnelState.primary : tunnelState.accent);
-  tmpC1.lerp(tmpC2, isRightSide ? (0.30 + beatMix * 0.45) : (0.16 + beatMix * 0.58));
-  tmpC1.lerp(new THREE.Color(0xffffff), 0.04 + shimmer * 0.18);
-  tmpC1.offsetHSL((particleHueJitter[i] - 0.5) * 0.05 + Math.sin(audioState.phase + i * 0.17) * 0.005, 0.0, particleLightJitter[i] * 0.030 + beatMix * 0.06);
+  tmpC1.lerp(tmpC2, isRightSide ? (0.18 + beatMix * 0.70) : (0.08 + beatMix * 0.82));
+  tmpC1.lerp(new THREE.Color(0xffffff), 0.05 + shimmer * 0.22);
+  tmpC1.offsetHSL((particleHueJitter[i] - 0.5) * 0.08 + Math.sin(audioState.phase * 1.25 + i * 0.17) * 0.020 + audioState.flash * 0.030, 0.0, particleLightJitter[i] * 0.035 + beatMix * 0.10);
   colors[i*3+0] = tmpC1.r;
   colors[i*3+1] = tmpC1.g;
   colors[i*3+2] = tmpC1.b;
@@ -1326,6 +1344,9 @@ function resetExperienceState(){
   audioState.onset = 0;
   audioState.phase = 0;
   lastBass = 0;
+  lastMid = 0;
+  lastHigh = 0;
+  lastLevel = 0;
   for (let i=0;i<rings.length;i++) {
     rings[i].position.z = RING_NEAR_Z - i * RING_SPACING;
     rings[i].scale.setScalar(THREE.MathUtils.lerp(1.28, 0.18, i / Math.max(1, rings.length - 1)));
