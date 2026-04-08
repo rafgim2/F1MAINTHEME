@@ -93,7 +93,7 @@ camera.position.set(0, 1.6, 2);
 
 const passthroughDarkener = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 20),
-  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, depthTest: false, toneMapped: false })
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false, toneMapped: false })
 );
 passthroughDarkener.position.set(0, 0, -0.55);
 passthroughDarkener.renderOrder = 9999;
@@ -160,10 +160,10 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
     const py = (y + 0.5) - half;
     const topToBottom = y / (size - 1);
     let verticalAlpha;
-    if (topToBottom <= 0.42) verticalAlpha = 0.50;
-    else if (topToBottom >= 0.72) verticalAlpha = 1.0;
+    if (topToBottom <= 0.40) verticalAlpha = 0.50;
+    else if (topToBottom >= 0.74) verticalAlpha = 1.0;
     else {
-      const t = (topToBottom - 0.42) / (0.72 - 0.42);
+      const t = (topToBottom - 0.40) / (0.74 - 0.40);
       verticalAlpha = 0.50 + t * 0.50;
     }
 
@@ -191,7 +191,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedOpacityMask(512, 34, 52);
+const videoMaskTex = makeRoundedOpacityMask(1024, 56, 150);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -200,7 +200,7 @@ const screen = new THREE.Mesh(
     alphaMap: videoMaskTex,
     transparent: true,
     opacity: 1.0,
-    alphaTest: 0.003,
+    alphaTest: 0.0,
   })
 );
 screen.position.set(0, 1.52, -1.55);
