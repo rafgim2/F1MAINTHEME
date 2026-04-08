@@ -68,37 +68,33 @@ const MOBILE_MIN_GAP = 0.055;
 // speed: velocidad del desplazamiento del túnel
 // boost: intensidad del glow
 const TUNNEL_CUES = [
-  { t: 0.0,  color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },  // azul
-  { t: 4.0,  color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },  // rojo
-  { t: 8.0,  color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },  // verde
-  { t: 12.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },  // purple
-  { t: 16.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },  // amarillo
-  { t: 20.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 24.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
-  { t: 28.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
-  { t: 32.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
-  { t: 36.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
-  { t: 40.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 44.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
-  { t: 48.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
-  { t: 52.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
-  { t: 56.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
-  { t: 60.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 64.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
-  { t: 68.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
-  { t: 72.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
-  { t: 76.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
-  { t: 80.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 84.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
-  { t: 88.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
-  { t: 92.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
-  { t: 96.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
-  { t: 100.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 }
+  { t: 0.0,  color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 18.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 34.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 50.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 66.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 82.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 98.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 }
 ];
+
+// ===== COLOR CYCLE SIMPLE (cada 4s, cambio instantáneo) =====
+const COLOR_PALETTE = [
+  { primary: "#2f80ff", accent: "#8fd3ff" }, // azul
+  { primary: "#ff3b3b", accent: "#ff9b9b" }, // rojo
+  { primary: "#20d060", accent: "#8cffb3" }, // verde
+  { primary: "#8a2cff", accent: "#d2a8ff" }, // purple
+  { primary: "#ffd21f", accent: "#fff2a6" }, // amarillo
+];
+
+function getPaletteIndex(t){
+  const period = 4.0; // segundos
+  return Math.floor(t / period) % COLOR_PALETTE.length;
+}
+
 
 // ==================== THREE / XR ====================
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, premultipliedAlpha:true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
+renderer.setPixelRatio(1.0);
 renderer.setSize(innerWidth, innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
@@ -713,19 +709,18 @@ function findCueWindow(t){
   return [a, b];
 }
 
+
 function updateTunnelPalette(t){
-  const [a, b] = findCueWindow(t);
-  let mix = 0;
-  if (b && b.t > a.t) mix = THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1);
-  tmpC1.set(a.color);
-  tmpC2.set(b.color || a.color);
-  tunnelState.primary.copy(tmpC1).lerp(tmpC2, mix);
-  tmpC1.set(a.accent);
-  tmpC2.set(b.accent || a.accent);
-  tunnelState.accent.copy(tmpC1).lerp(tmpC2, mix);
-  tunnelState.speed = THREE.MathUtils.lerp(a.speed, (b?.speed ?? a.speed), mix);
-  tunnelState.boost = THREE.MathUtils.lerp(a.boost, (b?.boost ?? a.boost), mix);
+  const idx = getPaletteIndex(t);
+  const p = COLOR_PALETTE[idx];
+  tunnelState.primary.set(p.primary);
+  tunnelState.accent.set(p.accent);
+  // mantener velocidad/boost base
+  const a = TUNNEL_CUES[0];
+  tunnelState.speed = a.speed;
+  tunnelState.boost = a.boost;
 }
+
 
 function updateTunnel(dt, t){
   updateTunnelPalette(t);
@@ -1005,14 +1000,19 @@ function randomViewerWorldPos(out, zNear, zFar, xMax, yMax){
 function pickTarget(isRight){ return isRight ? cornerTR : cornerTL; }
 function pickMobileSpawn(isRight){ return isRight ? cornerBR : cornerBL; }
 
+
 function setParticleColor(i, isRightSide){
-  tmpC1.copy(isRightSide ? tunnelState.accent : tunnelState.primary);
-  tmpC1.lerp(isRightSide ? tunnelState.primary : tunnelState.accent, 0.18 + (particleHueJitter[i] * 0.20));
-  tmpC1.offsetHSL((particleHueJitter[i] - 0.5) * 0.03, 0.0, particleLightJitter[i] * 0.05);
+  // color directo, sin cálculos caros
+  if (isRightSide){
+    tmpC1.set(tunnelState.accent);
+  } else {
+    tmpC1.set(tunnelState.primary);
+  }
   colors[i*3+0] = tmpC1.r;
   colors[i*3+1] = tmpC1.g;
   colors[i*3+2] = tmpC1.b;
 }
+
 
 function spawnParticlesFrom(worldPos, isRightSide){
   const t = pickTarget(isRightSide);
