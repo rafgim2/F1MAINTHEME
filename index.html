@@ -77,7 +77,7 @@ const TUNNEL_CUES = [
   { t: 98.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 }
 ];
 
-// ===== COLOR CYCLE SIMPLE (cada 4s, cambio instantáneo) =====
+// ===== COLOR CYCLE SIMPLE (cada 4s, con transición de 1s) =====
 const COLOR_PALETTE = [
   { primary: "#2f80ff", accent: "#8fd3ff" }, // azul
   { primary: "#ff3b3b", accent: "#ff9b9b" }, // rojo
@@ -86,9 +86,15 @@ const COLOR_PALETTE = [
   { primary: "#ffd21f", accent: "#fff2a6" }, // amarillo
 ];
 
-function getPaletteIndex(t){
-  const period = 4.0; // segundos
-  return Math.floor(t / period) % COLOR_PALETTE.length;
+function getPaletteBlend(t){
+  const period = 4.0;
+  const transition = 1.0;
+  const cyclePos = ((t % period) + period) % period;
+  const baseIndex = Math.floor(t / period) % COLOR_PALETTE.length;
+  const fromIndex = (baseIndex + COLOR_PALETTE.length) % COLOR_PALETTE.length;
+  const toIndex = (fromIndex + 1) % COLOR_PALETTE.length;
+  const mix = cyclePos < transition ? (cyclePos / transition) : 1.0;
+  return { fromIndex, toIndex, mix };
 }
 
 
@@ -711,10 +717,18 @@ function findCueWindow(t){
 
 
 function updateTunnelPalette(t){
-  const idx = getPaletteIndex(t);
-  const p = COLOR_PALETTE[idx];
-  tunnelState.primary.set(p.primary);
-  tunnelState.accent.set(p.accent);
+  const { fromIndex, toIndex, mix } = getPaletteBlend(t);
+  const from = COLOR_PALETTE[fromIndex];
+  const to = COLOR_PALETTE[toIndex];
+
+  tmpC1.set(from.primary);
+  tmpC2.set(to.primary);
+  tunnelState.primary.copy(tmpC1).lerp(tmpC2, mix);
+
+  tmpC1.set(from.accent);
+  tmpC2.set(to.accent);
+  tunnelState.accent.copy(tmpC1).lerp(tmpC2, mix);
+
   // mantener velocidad/boost base
   const a = TUNNEL_CUES[0];
   tunnelState.speed = a.speed;
