@@ -316,7 +316,7 @@ for (let i=0;i<ringCount;i++){
 const floorGroup = new THREE.Group();
 tunnelRoot.add(floorGroup);
 
-const floorY = -2.18;
+const floorY = ARCH_BASE_Y + 0.015;
 const floorNearZ = 5.2;
 const floorFarZ = -132.0;
 const floorWidthOverscan = 1.028;
@@ -404,35 +404,63 @@ function resetFloorLane(mesh, initial=false){
   mesh.userData.laneNorm = laneNorm;
 }
 
-const streakCount = 260;
+const streakCount = 240;
 const streaks = [];
+const streakFarZ = RING_FAR_Z - 10.0;
+const streakNearZ = 6.8;
+const streakVanish = new THREE.Vector3(0, TUNNEL_CENTER_Y + 0.12, streakFarZ);
+const streakTmpA = new THREE.Vector3();
+const streakTmpB = new THREE.Vector3();
+const streakTmpDir = new THREE.Vector3();
+const streakMid = new THREE.Vector3();
+const streakQuatBase = new THREE.Vector3(0, 1, 0);
+
+function archHalfWidthAt(y, z){
+  const dy = y - ARCH_BASE_Y;
+  const baseHalfW = Math.sqrt(Math.max(0.0, archRadius * archRadius - dy * dy));
+  return Math.max(0.0, baseHalfW * ringScaleAtZ(z));
+}
+
 for (let i=0;i<streakCount;i++){
-  const geo = new THREE.PlaneGeometry(0.028 + Math.random()*0.018, 2.6 + Math.random()*2.6);
+  const geo = new THREE.CylinderGeometry(0.007, 0.007, 1, 6, 1, true);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x6be2ff,
     transparent: true,
     opacity: 0.24,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide
+    blending: THREE.AdditiveBlending
   });
   const streak = new THREE.Mesh(geo, mat);
-  streak.rotation.x = -Math.PI / 2;
   resetStreak(streak, true);
   tunnelRoot.add(streak);
   streaks.push(streak);
 }
 
+function placeStreak(mesh){
+  const u = mesh.userData.u;
+  streakTmpA.copy(streakVanish);
+  streakTmpB.set(mesh.userData.endX, mesh.userData.endY, streakNearZ);
+  const center = streakTmpA.clone().lerp(streakTmpB, u);
+  streakTmpDir.subVectors(streakTmpB, streakTmpA).normalize();
+  const len = THREE.MathUtils.lerp(mesh.userData.minLen, mesh.userData.maxLen, Math.pow(u, 0.72));
+  mesh.position.copy(center);
+  mesh.quaternion.setFromUnitVectors(streakQuatBase, streakTmpDir);
+  mesh.scale.setScalar(1);
+  mesh.scale.y = len;
+}
+
 function resetStreak(mesh, initial=false){
-  const z = initial ? (-5.0 - Math.random()*146.0) : (-146.0 - Math.random()*34.0);
-  const halfW = Math.max(0.08, floorHalfWidthAtZ(z) - 0.14);
+  const endY = ARCH_BASE_Y + 0.18 + Math.random() * (archRadius * 0.92);
+  const endHalfW = Math.max(0.06, archHalfWidthAt(endY, streakNearZ) - 0.10);
   const laneNorm = (Math.random()*2 - 1);
-  mesh.position.set(laneNorm * halfW * 0.985, floorY + 0.02, z);
-  const len = 0.85 + Math.random()*2.25;
-  mesh.scale.set(1, len, 1);
-  mesh.userData.baseLen = len;
-  mesh.userData.speedMul = 0.36 + Math.random()*0.58;
+  mesh.userData.endX = laneNorm * endHalfW * 0.96;
+  mesh.userData.endY = endY;
+  mesh.userData.u = initial ? Math.random() : 0.0;
+  mesh.userData.speedMul = 0.22 + Math.random()*0.34;
+  mesh.userData.minLen = 0.18 + Math.random()*0.28;
+  mesh.userData.maxLen = 1.6 + Math.random()*2.0;
   mesh.userData.laneNorm = laneNorm;
+  placeStreak(mesh);
 }
 
 const starCount = 420;
@@ -526,17 +554,15 @@ function updateTunnel(dt, t){
   }
 
   for (const streak of streaks){
-    streak.position.z += dt * (0.48 + tunnelState.speed * 0.92) * streak.userData.speedMul;
-    if (streak.position.z > 5.5) resetStreak(streak, false);
-    const zNorm = THREE.MathUtils.clamp((streak.position.z - floorFarZ) / (floorNearZ - floorFarZ), 0, 1);
-    const halfW = Math.max(0.08, floorHalfWidthAtZ(streak.position.z) - 0.12);
-    streak.position.x = streak.userData.laneNorm * halfW * 0.985;
-    streak.position.y = floorY + 0.02;
-    const widthScale = THREE.MathUtils.lerp(0.65, 1.35, Math.pow(zNorm, 1.1));
-    const lenScale = THREE.MathUtils.lerp(0.75, 1.6, zNorm) * streak.userData.baseLen;
-    streak.scale.set(widthScale, lenScale, 1);
+    streak.userData.u += dt * (0.34 + tunnelState.speed * 0.52) * streak.userData.speedMul;
+    if (streak.userData.u > 1.02) resetStreak(streak, false);
+    placeStreak(streak);
+    const zNorm = THREE.MathUtils.clamp(streak.userData.u, 0, 1);
+    const widthScale = THREE.MathUtils.lerp(0.7, 1.45, Math.pow(zNorm, 0.9));
+    streak.scale.x = widthScale;
+    streak.scale.z = widthScale;
     streak.material.color.copy(tunnelState.accent);
-    streak.material.opacity = 0.10 + tunnelState.boost * 0.10 + frameEnergy * 0.12 + zNorm * 0.12;
+    streak.material.opacity = 0.03 + tunnelState.boost * 0.07 + frameEnergy * 0.10 + Math.pow(zNorm, 1.35) * 0.28;
   }
 
   starMat.color.copy(tunnelState.accent);
