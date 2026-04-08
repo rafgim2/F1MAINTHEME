@@ -42,7 +42,7 @@
 
 <script type="module">
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
-import { VIDEO_URL } from "./cues_haiku.js";
+import { VIDEO_URL, SECOND_VIDEO_URL } from "./cues_haiku.js";
 
 const overlay = document.getElementById("overlay");
 const logEl = document.getElementById("log");
@@ -127,6 +127,26 @@ video.addEventListener("error", () => {
 const videoTex = new THREE.VideoTexture(video);
 videoTex.colorSpace = THREE.SRGBColorSpace;
 
+const videoVertical = document.createElement("video");
+videoVertical.crossOrigin = "anonymous";
+videoVertical.src = SECOND_VIDEO_URL;
+videoVertical.loop = true;
+videoVertical.muted = true;
+videoVertical.playsInline = true;
+videoVertical.setAttribute("webkit-playsinline", "");
+videoVertical.setAttribute("playsinline", "");
+videoVertical.preload = "auto";
+videoVertical.style.display = "none";
+document.body.appendChild(videoVertical);
+
+videoVertical.addEventListener("error", () => {
+  const e = videoVertical.error;
+  log("❌ Error vídeo vertical: " + (e ? (e.code + " " + e.message) : "desconocido"));
+});
+
+const videoVerticalTex = new THREE.VideoTexture(videoVertical);
+videoVerticalTex.colorSpace = THREE.SRGBColorSpace;
+
 video.addEventListener("ended", async () => {
   log("⏹ Vídeo finalizado → saliendo de la experiencia");
   const s = renderer.xr.getSession?.();
@@ -194,6 +214,25 @@ const screenW = 1.6;
 const screenH = 0.9;
 const videoMaskTex = makeRoundedOpacityMask(1024, 72, 80);
 
+const verticalScreenW = 0.62;
+const verticalScreenH = 1.10;
+
+const verticalScreen = new THREE.Mesh(
+  new THREE.PlaneGeometry(verticalScreenW, verticalScreenH),
+  new THREE.MeshBasicMaterial({
+    map: videoVerticalTex,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+    depthTest: false,
+    toneMapped: false,
+  })
+);
+verticalScreen.renderOrder = 10000;
+verticalScreen.position.set(0, 1.46, -1.80);
+verticalScreen.visible = false;
+scene.add(verticalScreen);
+
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
   new THREE.MeshBasicMaterial({
@@ -209,6 +248,7 @@ const screen = new THREE.Mesh(
 );
 screen.renderOrder = 10001;
 screen.position.set(0, 1.46, -1.55);
+screen.rotation.x = -0.75;
 screen.renderOrder = 10001;
 scene.add(screen);
 
@@ -1067,6 +1107,11 @@ function resetExperienceState(){
     video.pause();
     if (video.ended || video.currentTime > 0.001) video.currentTime = 0;
   }catch{}
+  try{
+    videoVertical.pause();
+    if (videoVertical.ended || videoVertical.currentTime > 0.001) videoVertical.currentTime = 0;
+  }catch{}
+  verticalScreen.visible = false;
   prevVideoT = 0;
   resetMidiHapticsState();
   resetParticlesState();
@@ -1143,7 +1188,11 @@ btnStart.onclick = async () => {
     video.muted = false;
     video.volume = 1.0;
     await video.play();
+    if (SECOND_VIDEO_URL) {
+      try{ await videoVertical.play(); }catch(e){ log("⚠️ El vídeo vertical no pudo iniciarse: " + (e?.message || e)); }
+    }
 
+    verticalScreen.visible = !!SECOND_VIDEO_URL;
     screen.visible = true;
     frameGroup.visible = false;
     points.visible = true;
