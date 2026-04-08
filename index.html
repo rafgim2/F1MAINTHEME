@@ -222,7 +222,7 @@ const verticalScreen = new THREE.Mesh(
   new THREE.MeshBasicMaterial({
     map: videoVerticalTex,
     transparent: true,
-    opacity: 0.75,
+    opacity: 0.90,
     depthWrite: false,
     depthTest: false,
     toneMapped: false,
@@ -232,6 +232,18 @@ verticalScreen.renderOrder = 10000;
 verticalScreen.position.set(0, 1.46, -1.80);
 verticalScreen.visible = false;
 scene.add(verticalScreen);
+
+videoVertical.addEventListener("loadedmetadata", () => {
+  const vw = videoVertical.videoWidth || 9;
+  const vh = videoVertical.videoHeight || 16;
+  const aspect = vw / vh;
+
+  const targetHeight = 1.10;
+  const targetWidth = targetHeight * aspect;
+
+  verticalScreen.geometry.dispose();
+  verticalScreen.geometry = new THREE.PlaneGeometry(targetWidth, targetHeight);
+});
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
