@@ -221,8 +221,10 @@ const verticalScreen = new THREE.Mesh(
   new THREE.PlaneGeometry(verticalScreenW, verticalScreenH),
   new THREE.MeshBasicMaterial({
     map: videoVerticalTex,
+    alphaMap: videoMaskTex,
     transparent: true,
     opacity: 0.90,
+    alphaTest: 0.0,
     depthWrite: false,
     depthTest: false,
     toneMapped: false,
