@@ -210,9 +210,53 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
   return tex;
 }
 
+function makeRoundedAlphaMask(size = 512, r = 32, feather = 42){
+  const c = document.createElement("canvas");
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
+
+  const half = size * 0.5;
+  const inset = Math.max(feather + 10, r * 0.35);
+  const innerHalfW = half - inset;
+  const innerHalfH = half - inset;
+
+  function sdRoundedRect(px, py, hw, hh, rad){
+    const qx = Math.abs(px) - (hw - rad);
+    const qy = Math.abs(py) - (hh - rad);
+    const ox = Math.max(qx, 0.0);
+    const oy = Math.max(qy, 0.0);
+    return Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0.0) - rad;
+  }
+
+  for (let y = 0; y < size; y++){
+    const py = (y + 0.5) - half;
+    for (let x = 0; x < size; x++){
+      const px = (x + 0.5) - half;
+      const d = sdRoundedRect(px, py, innerHalfW, innerHalfH, r);
+      const a = 1.0 - THREE.MathUtils.smoothstep(d, 0.0, feather);
+      const idx = (y * size + x) * 4;
+      const v = Math.round(Math.max(0, Math.min(1, a)) * 255);
+      data[idx] = v;
+      data[idx + 1] = v;
+      data[idx + 2] = v;
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
 const screenW = 1.6;
 const screenH = 0.9;
 const videoMaskTex = makeRoundedOpacityMask(1024, 72, 80);
+const verticalVideoMaskTex = makeRoundedAlphaMask(1024, 72, 80);
 
 const verticalScreenW = 0.62;
 const verticalScreenH = 1.10;
@@ -221,7 +265,7 @@ const verticalScreen = new THREE.Mesh(
   new THREE.PlaneGeometry(verticalScreenW, verticalScreenH),
   new THREE.MeshBasicMaterial({
     map: videoVerticalTex,
-    alphaMap: videoMaskTex,
+    alphaMap: verticalVideoMaskTex,
     transparent: true,
     opacity: 1.0,
     alphaTest: 0.0,
@@ -231,7 +275,7 @@ const verticalScreen = new THREE.Mesh(
   })
 );
 verticalScreen.renderOrder = 10000;
-verticalScreen.position.set(0, 1.66, -1.80);
+verticalScreen.position.set(0, 1.46, -1.80);
 verticalScreen.visible = false;
 scene.add(verticalScreen);
 
@@ -261,8 +305,8 @@ const screen = new THREE.Mesh(
   })
 );
 screen.renderOrder = 10002;
-screen.position.set(0, 1.36, -1.55);
-screen.rotation.x = -1;
+screen.position.set(0, 1.46, -1.55);
+screen.rotation.x = -0.75;
 screen.renderOrder = 10002;
 scene.add(screen);
 
