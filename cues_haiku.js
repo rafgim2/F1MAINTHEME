@@ -1,6 +1,6 @@
 // Vídeo y textos del haiku para DreamsAR
 export const VIDEO_URL = "https://pub-aa6ee859836d478ca4ac85eb9f71f0c3.r2.dev/F1%20Quest%20V4(1).mp4";
-export const SECOND_VIDEO_URL = "https://pub-aa6ee859836d478ca4ac85eb9f71f0c3.r2.dev/F1%20Quest%20background.mp4";
+export const SECOND_VIDEO_URL = "https://pub-aa6ee859836d478ca4ac85eb9f71f0c3.r2.dev/F1%20Quest%20Background%20V2(1).mp4";
 
 export const HAIKU_LANGUAGES = [
   {
