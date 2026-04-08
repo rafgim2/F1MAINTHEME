@@ -96,7 +96,7 @@ const passthroughDarkener = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false, toneMapped: false })
 );
 passthroughDarkener.position.set(0, 0, -0.55);
-passthroughDarkener.renderOrder = 9999;
+passthroughDarkener.renderOrder = 5000;
 camera.add(passthroughDarkener);
 scene.add(camera);
 
@@ -209,6 +209,7 @@ const screen = new THREE.Mesh(
 );
 screen.renderOrder = 10001;
 screen.position.set(0, 1.52, -1.55);
+screen.renderOrder = 10001;
 scene.add(screen);
 
 const cornerTL = new THREE.Vector3();
@@ -243,6 +244,7 @@ function roundedRectShape(w,h,r){
 
 const frameGroup = new THREE.Group();
 frameGroup.visible = false;
+frameGroup.renderOrder = 10002;
 frameGroup.position.copy(screen.position);
 frameGroup.rotation.copy(screen.rotation);
 scene.add(frameGroup);
@@ -296,6 +298,7 @@ let frameEnergy = 0;
 
 // ==================== TÚNEL ====================
 const tunnelRoot = new THREE.Group();
+tunnelRoot.renderOrder = 10000;
 scene.add(tunnelRoot);
 const TUNNEL_CENTER_Y = 0.15; // centro más bajo y túnel más lejano
 
@@ -344,7 +347,23 @@ for (let i=0;i<ringCount;i++){
 }
 
 const floorGroup = new THREE.Group();
+floorGroup.renderOrder = 10000;
 tunnelRoot.add(floorGroup);
+
+function forceRenderOrder(root, order){
+  root.traverse((obj) => {
+    obj.renderOrder = order;
+    if (obj.material){
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        if (!m) return;
+        m.depthWrite = false;
+        m.depthTest = false;
+        m.transparent = true;
+      });
+    }
+  });
+}
 
 const floorY = ARCH_BASE_Y + 0.015;
 const floorNearZ = 5.2;
@@ -514,6 +533,7 @@ const starMat = new THREE.PointsMaterial({
 });
 const tunnelStars = new THREE.Points(starGeo, starMat);
 tunnelRoot.add(tunnelStars);
+forceRenderOrder(tunnelRoot, 10000);
 
 const tunnelState = {
   primary: new THREE.Color("#4fe0ff"),
@@ -780,8 +800,9 @@ const pMat = new THREE.ShaderMaterial({
 });
 const points = new THREE.Points(pGeom, pMat);
 points.frustumCulled = false;
-points.renderOrder = 999;
+points.renderOrder = 10000;
 scene.add(points);
+if (points.material){ points.material.depthWrite = false; points.material.depthTest = false; }
 
 function applyParticlePointSize(session = null){
   const presenting = renderer.xr.isPresenting === true;
