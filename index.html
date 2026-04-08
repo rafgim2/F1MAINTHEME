@@ -210,7 +210,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
   return tex;
 }
 
-function makeRoundedAlphaMask(size = 512, r = 32, feather = 42){
+function makeUniformFeatherMask(size = 512, r = 32, feather = 42){
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
@@ -256,7 +256,7 @@ function makeRoundedAlphaMask(size = 512, r = 32, feather = 42){
 const screenW = 1.6;
 const screenH = 0.9;
 const videoMaskTex = makeRoundedOpacityMask(1024, 72, 80);
-const verticalVideoMaskTex = makeRoundedAlphaMask(1024, 72, 80);
+const verticalVideoMaskTex = makeUniformFeatherMask(1024, 72, 120);
 
 const verticalScreenW = 0.62;
 const verticalScreenH = 1.10;
@@ -267,7 +267,7 @@ const verticalScreen = new THREE.Mesh(
     map: videoVerticalTex,
     alphaMap: verticalVideoMaskTex,
     transparent: true,
-    opacity: 1.0,
+    opacity: 0.9,
     alphaTest: 0.0,
     depthWrite: false,
     depthTest: false,
