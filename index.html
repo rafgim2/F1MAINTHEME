@@ -192,7 +192,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedOpacityMask(1024, 72, 220);
+const videoMaskTex = makeRoundedOpacityMask(1024, 72, 120);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -505,7 +505,7 @@ function resetStreak(mesh, initial=false){
   mesh.userData.endX = laneNorm * endHalfW * 0.96;
   mesh.userData.endY = endY;
   mesh.userData.u = initial ? Math.random() : 0.0;
-  mesh.userData.speedMul = 0.22 + Math.random()*0.34;
+  mesh.userData.speedMul = 0.12 + Math.random()*0.18;
   mesh.userData.minLen = 0.18 + Math.random()*0.28;
   mesh.userData.maxLen = 1.6 + Math.random()*2.0;
   mesh.userData.laneNorm = laneNorm;
@@ -604,7 +604,7 @@ function updateTunnel(dt, t){
   }
 
   for (const streak of streaks){
-    streak.userData.u += dt * (0.34 + tunnelState.speed * 0.52) * streak.userData.speedMul;
+    streak.userData.u += dt * (0.16 + tunnelState.speed * 0.22) * streak.userData.speedMul;
     if (streak.userData.u > 1.02) resetStreak(streak, false);
     placeStreak(streak);
     const zNorm = THREE.MathUtils.clamp(streak.userData.u, 0, 1);
