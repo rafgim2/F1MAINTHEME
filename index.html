@@ -157,7 +157,7 @@ video.addEventListener("ended", async () => {
 });
 
 // ==================== VÍDEO + MARCO ====================
-function makeRoundedOpacityMask(size = 512, r = 32, feather = 12){
+function makeRoundedOpacityMask(size = 512, r = 32, feather = 5){
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
@@ -165,7 +165,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 12){
   const data = img.data;
 
   const half = size * 0.5;
-  const inset = Math.max(feather + 10, r * 0.25);
+  const inset = Math.max(feather + 10, r * 0.05);
   const innerHalfW = half - inset;
   const innerHalfH = half - inset;
 
