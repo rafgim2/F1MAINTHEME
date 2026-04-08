@@ -157,7 +157,7 @@ video.addEventListener("ended", async () => {
 });
 
 // ==================== VÍDEO + MARCO ====================
-function makeRoundedOpacityMask(size = 512, r = 32, feather = 5){
+function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
@@ -165,7 +165,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 5){
   const data = img.data;
 
   const half = size * 0.5;
-  const inset = Math.max(feather + 10, r * 0.05);
+  const inset = Math.max(feather + 10, r * 0.35);
   const innerHalfW = half - inset;
   const innerHalfH = half - inset;
 
@@ -256,23 +256,65 @@ function makeUniformFeatherMask(size = 512, r = 32, feather = 42){
 const screenW = 1.6;
 const screenH = 0.9;
 const videoMaskTex = makeRoundedOpacityMask(1024, 72, 80);
-const verticalVideoMaskTex = makeUniformFeatherMask(1024, 72, 35);
+const verticalVideoMaskTex = makeUniformFeatherMask(1024, 72, 24);
 
 const verticalScreenW = 0.62;
 const verticalScreenH = 1.10;
 
+// keyThreshold: cuánto negro se vuelve transparente en el vídeo vertical.
+// keySoftness: suavidad de la transición para evitar bordes duros / ruido.
+const verticalKeySettings = {
+  keyThreshold: 0.10,
+  keySoftness: 0.10,
+  opacity: 1.0,
+};
+
+const verticalScreenMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    map: { value: videoVerticalTex },
+    alphaMap: { value: verticalVideoMaskTex },
+    opacity: { value: verticalKeySettings.opacity },
+    keyThreshold: { value: verticalKeySettings.keyThreshold },
+    keySoftness: { value: verticalKeySettings.keySoftness },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main(){
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D map;
+    uniform sampler2D alphaMap;
+    uniform float opacity;
+    uniform float keyThreshold;
+    uniform float keySoftness;
+    varying vec2 vUv;
+
+    void main(){
+      vec4 videoColor = texture2D(map, vUv);
+      float borderAlpha = texture2D(alphaMap, vUv).r;
+
+      // Hace transparentes los negros del propio vídeo.
+      float brightness = max(max(videoColor.r, videoColor.g), videoColor.b);
+      float videoAlpha = smoothstep(keyThreshold, keyThreshold + keySoftness, brightness);
+
+      float finalAlpha = borderAlpha * videoAlpha * opacity;
+      if (finalAlpha <= 0.001) discard;
+
+      gl_FragColor = vec4(videoColor.rgb, finalAlpha);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  depthTest: false,
+  toneMapped: false,
+});
+
 const verticalScreen = new THREE.Mesh(
   new THREE.PlaneGeometry(verticalScreenW, verticalScreenH),
-  new THREE.MeshBasicMaterial({
-    map: videoVerticalTex,
-    alphaMap: verticalVideoMaskTex,
-    transparent: false,
-    opacity: 1.0,
-    alphaTest: 0.0,
-    depthWrite: false,
-    depthTest: false,
-    toneMapped: false,
-  })
+  verticalScreenMaterial
 );
 verticalScreen.renderOrder = 10000;
 verticalScreen.position.set(0, 1.46, -1.80);
@@ -296,7 +338,7 @@ const screen = new THREE.Mesh(
   new THREE.MeshBasicMaterial({
     map: videoTex,
     alphaMap: videoMaskTex,
-    transparent: false,
+    transparent: true,
     opacity: 1.0,
     alphaTest: 0.0,
     depthWrite: false,
@@ -305,7 +347,7 @@ const screen = new THREE.Mesh(
   })
 );
 screen.renderOrder = 10002;
-screen.position.set(0, 1.26, -1.55);
+screen.position.set(0, 1.46, -1.55);
 screen.rotation.x = -1.0;
 screen.renderOrder = 10002;
 scene.add(screen);
@@ -1186,6 +1228,7 @@ function resetExperienceState(){
 let prevVideoT = 0;
 renderer.setAnimationLoop(() => {
   if (video.readyState >= 2) videoTex.needsUpdate = true;
+  if (videoVertical.readyState >= 2) videoVerticalTex.needsUpdate = true;
   scene.updateMatrixWorld(true);
   updateVideoCornersWorld();
 
