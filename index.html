@@ -145,8 +145,9 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
   const data = img.data;
 
   const half = size * 0.5;
-  const innerHalfW = half;
-  const innerHalfH = half;
+  const inset = Math.max(feather + 10, r * 0.35);
+  const innerHalfW = half - inset;
+  const innerHalfH = half - inset;
 
   function sdRoundedRect(px, py, hw, hh, rad){
     const qx = Math.abs(px) - (hw - rad);
@@ -191,7 +192,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedOpacityMask(1024, 56, 150);
+const videoMaskTex = makeRoundedOpacityMask(1024, 72, 220);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -201,8 +202,12 @@ const screen = new THREE.Mesh(
     transparent: true,
     opacity: 1.0,
     alphaTest: 0.0,
+    depthWrite: false,
+    depthTest: false,
+    toneMapped: false,
   })
 );
+screen.renderOrder = 10001;
 screen.position.set(0, 1.52, -1.55);
 scene.add(screen);
 
