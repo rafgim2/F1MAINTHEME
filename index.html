@@ -93,7 +93,7 @@ camera.position.set(0, 1.6, 2);
 
 const passthroughDarkener = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 20),
-  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.24, depthWrite: false, depthTest: false, toneMapped: false })
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, depthTest: false, toneMapped: false })
 );
 passthroughDarkener.position.set(0, 0, -0.55);
 passthroughDarkener.renderOrder = 9999;
@@ -173,10 +173,11 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
       const edgeAlpha = 1.0 - THREE.MathUtils.smoothstep(d, 0.0, feather);
       const a = Math.max(0, Math.min(1, edgeAlpha * verticalAlpha));
       const idx = (y * size + x) * 4;
-      data[idx] = 255;
-      data[idx + 1] = 255;
-      data[idx + 2] = 255;
-      data[idx + 3] = Math.round(a * 255);
+      const v = Math.round(a * 255);
+      data[idx] = v;
+      data[idx + 1] = v;
+      data[idx + 2] = v;
+      data[idx + 3] = 255;
     }
   }
 
@@ -236,6 +237,7 @@ function roundedRectShape(w,h,r){
 }
 
 const frameGroup = new THREE.Group();
+frameGroup.visible = false;
 frameGroup.position.copy(screen.position);
 frameGroup.rotation.copy(screen.rotation);
 scene.add(frameGroup);
@@ -280,7 +282,7 @@ const hole  = roundedRectShape(innerW, innerH, Math.max(0.001, radius - border))
 outer.holes.push(hole);
 
 const frameGeo = new THREE.ShapeGeometry(outer);
-const frameMat = new THREE.MeshBasicMaterial({ map: gradTex, transparent:true, opacity:0.84 });
+const frameMat = new THREE.MeshBasicMaterial({ map: gradTex, transparent:true, opacity:0.0, depthWrite:false });
 const frameMesh = new THREE.Mesh(frameGeo, frameMat);
 frameMesh.position.set(0,0,zFront);
 frameGroup.add(frameMesh);
@@ -449,7 +451,7 @@ for (let i=0;i<streakCount;i++){
   const mat = new THREE.MeshBasicMaterial({
     color: 0x6be2ff,
     transparent: true,
-    opacity: 0.24,
+    opacity: 0.42,
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
