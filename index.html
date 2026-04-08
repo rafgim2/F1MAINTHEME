@@ -68,13 +68,32 @@ const MOBILE_MIN_GAP = 0.055;
 // speed: velocidad del desplazamiento del túnel
 // boost: intensidad del glow
 const TUNNEL_CUES = [
-  { t: 0.0,  color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 18.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 34.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 50.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 66.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 82.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
-  { t: 98.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 }
+  { t: 0.0,  color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },  // azul
+  { t: 4.0,  color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },  // rojo
+  { t: 8.0,  color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },  // verde
+  { t: 12.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },  // purple
+  { t: 16.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },  // amarillo
+  { t: 20.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 24.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
+  { t: 28.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
+  { t: 32.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
+  { t: 36.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
+  { t: 40.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 44.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
+  { t: 48.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
+  { t: 52.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
+  { t: 56.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
+  { t: 60.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 64.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
+  { t: 68.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
+  { t: 72.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
+  { t: 76.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
+  { t: 80.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 },
+  { t: 84.0, color: "#ff3b3b", accent: "#ff9b9b", speed: 0.95, boost: 1.00 },
+  { t: 88.0, color: "#20d060", accent: "#8cffb3", speed: 0.95, boost: 1.00 },
+  { t: 92.0, color: "#8a2cff", accent: "#d2a8ff", speed: 0.95, boost: 1.00 },
+  { t: 96.0, color: "#ffd21f", accent: "#fff2a6", speed: 0.95, boost: 1.00 },
+  { t: 100.0, color: "#2f80ff", accent: "#8fd3ff", speed: 0.95, boost: 1.00 }
 ];
 
 // ==================== THREE / XR ====================
@@ -987,7 +1006,9 @@ function pickTarget(isRight){ return isRight ? cornerTR : cornerTL; }
 function pickMobileSpawn(isRight){ return isRight ? cornerBR : cornerBL; }
 
 function setParticleColor(i, isRightSide){
-  tmpC1.set(isRightSide ? "#8fd3ff" : "#2f80ff");
+  tmpC1.copy(isRightSide ? tunnelState.accent : tunnelState.primary);
+  tmpC1.lerp(isRightSide ? tunnelState.primary : tunnelState.accent, 0.18 + (particleHueJitter[i] * 0.20));
+  tmpC1.offsetHSL((particleHueJitter[i] - 0.5) * 0.03, 0.0, particleLightJitter[i] * 0.05);
   colors[i*3+0] = tmpC1.r;
   colors[i*3+1] = tmpC1.g;
   colors[i*3+2] = tmpC1.b;
