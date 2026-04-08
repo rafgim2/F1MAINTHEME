@@ -230,7 +230,7 @@ const verticalScreen = new THREE.Mesh(
     toneMapped: false,
   })
 );
-verticalScreen.renderOrder = 10002;
+verticalScreen.renderOrder = 10000;
 verticalScreen.position.set(0, 1.46, -1.80);
 verticalScreen.visible = false;
 scene.add(verticalScreen);
@@ -260,10 +260,10 @@ const screen = new THREE.Mesh(
     toneMapped: false,
   })
 );
-screen.renderOrder = 10001;
+screen.renderOrder = 10002;
 screen.position.set(0, 1.46, -1.55);
 screen.rotation.x = -0.75;
-screen.renderOrder = 10001;
+screen.renderOrder = 10002;
 scene.add(screen);
 
 const cornerTL = new THREE.Vector3();
