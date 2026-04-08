@@ -127,15 +127,13 @@ video.addEventListener("ended", async () => {
 });
 
 // ==================== VÍDEO + MARCO ====================
-function makeRoundedAlphaMask(size = 512, r = 32){
+function makeRoundedOpacityMask(size = 512, r = 32){
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
   ctx.clearRect(0,0,size,size);
-  ctx.fillStyle = "black";
-  ctx.fillRect(0,0,size,size);
+
   const x = 0, y = 0, w = size, h = size;
-  ctx.fillStyle = "white";
   ctx.beginPath();
   ctx.moveTo(x+r, y);
   ctx.lineTo(x+w-r, y);
@@ -147,7 +145,18 @@ function makeRoundedAlphaMask(size = 512, r = 32){
   ctx.lineTo(x, y+r);
   ctx.quadraticCurveTo(x, y, x+r, y);
   ctx.closePath();
-  ctx.fill();
+  ctx.save();
+  ctx.clip();
+
+  const grd = ctx.createLinearGradient(0, 0, 0, size);
+  grd.addColorStop(0.00, "rgb(128,128,128)");   // 50% opacidad arriba
+  grd.addColorStop(0.42, "rgb(128,128,128)");   // mantiene la mitad superior semitransparente
+  grd.addColorStop(0.58, "rgb(255,255,255)");   // transición suave en la zona media
+  grd.addColorStop(1.00, "rgb(255,255,255)");   // 100% opaco abajo
+  ctx.fillStyle = grd;
+  ctx.fillRect(0,0,size,size);
+  ctx.restore();
+
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
@@ -157,7 +166,7 @@ function makeRoundedAlphaMask(size = 512, r = 32){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedAlphaMask(512, 30);
+const videoMaskTex = makeRoundedOpacityMask(512, 30);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -165,7 +174,7 @@ const screen = new THREE.Mesh(
     map: videoTex,
     alphaMap: videoMaskTex,
     transparent: true,
-    opacity: 0.5,
+    opacity: 1.0,
     alphaTest: 0.02,
   })
 );
