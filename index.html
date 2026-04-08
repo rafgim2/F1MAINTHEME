@@ -114,7 +114,7 @@ camera.position.set(0, 1.6, 2);
 
 const passthroughDarkener = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 20),
-  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false, toneMapped: false })
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.75, depthWrite: false, depthTest: false, toneMapped: false })
 );
 passthroughDarkener.position.set(0, 0, -0.55);
 passthroughDarkener.renderOrder = 5000;
