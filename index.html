@@ -127,6 +127,81 @@ video.addEventListener("error", () => {
 const videoTex = new THREE.VideoTexture(video);
 videoTex.colorSpace = THREE.SRGBColorSpace;
 
+let audioCtx = null;
+let audioSourceNode = null;
+let audioAnalyser = null;
+let audioFreqData = null;
+let audioReady = false;
+let lastBass = 0;
+const audioState = {
+  bass: 0,
+  mid: 0,
+  high: 0,
+  level: 0,
+  flash: 0,
+  onset: 0,
+  phase: 0,
+};
+
+async function ensureAudioReactive(){
+  if (audioReady) return true;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return false;
+  if (!audioCtx) audioCtx = new Ctx();
+  if (!audioSourceNode){
+    audioSourceNode = audioCtx.createMediaElementSource(video);
+    audioAnalyser = audioCtx.createAnalyser();
+    audioAnalyser.fftSize = 256;
+    audioAnalyser.smoothingTimeConstant = 0.72;
+    audioFreqData = new Uint8Array(audioAnalyser.frequencyBinCount);
+    audioSourceNode.connect(audioAnalyser);
+    audioAnalyser.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === "suspended") {
+    try { await audioCtx.resume(); } catch {}
+  }
+  audioReady = true;
+  return true;
+}
+
+function averageFreqRange(startBin, endBin){
+  if (!audioFreqData || !audioAnalyser) return 0;
+  const last = Math.min(audioFreqData.length, Math.max(startBin + 1, endBin));
+  let sum = 0;
+  let count = 0;
+  for (let i = Math.max(0, startBin); i < last; i++) {
+    sum += audioFreqData[i];
+    count++;
+  }
+  return count ? (sum / count) / 255 : 0;
+}
+
+function updateAudioReactive(dt){
+  if (!audioReady || !audioAnalyser || !audioFreqData) {
+    audioState.flash *= Math.exp(-dt * 8.0);
+    return;
+  }
+  audioAnalyser.getByteFrequencyData(audioFreqData);
+  const bass = averageFreqRange(1, 8);
+  const mid  = averageFreqRange(8, 28);
+  const high = averageFreqRange(28, 64);
+  const level = averageFreqRange(1, 64);
+  const onsetRaw = Math.max(0, bass - (lastBass * 0.90) - 0.018);
+  lastBass = bass;
+
+  audioState.bass = THREE.MathUtils.lerp(audioState.bass, bass, 0.35);
+  audioState.mid = THREE.MathUtils.lerp(audioState.mid, mid, 0.25);
+  audioState.high = THREE.MathUtils.lerp(audioState.high, high, 0.25);
+  audioState.level = THREE.MathUtils.lerp(audioState.level, level, 0.22);
+  audioState.onset = onsetRaw;
+  audioState.flash *= Math.exp(-dt * 9.5);
+  audioState.flash = Math.max(audioState.flash, Math.min(1.0, onsetRaw * 7.5 + bass * 0.55));
+  audioState.phase += dt * (0.8 + audioState.level * 2.2 + audioState.flash * 3.5);
+
+  const audioBoost = audioState.level * 0.42 + audioState.flash * 0.85;
+  frameEnergy = Math.max(frameEnergy, Math.min(1.0, audioBoost));
+}
+
 const videoVertical = document.createElement("video");
 videoVertical.crossOrigin = "anonymous";
 videoVertical.src = SECOND_VIDEO_URL;
@@ -683,6 +758,8 @@ const tunnelState = {
 };
 const tmpC1 = new THREE.Color();
 const tmpC2 = new THREE.Color();
+const tmpC3 = new THREE.Color();
+const tmpC4 = new THREE.Color();
 
 function findCueWindow(t){
   let a = TUNNEL_CUES[0];
@@ -698,22 +775,38 @@ function updateTunnelPalette(t){
   const [a, b] = findCueWindow(t);
   let mix = 0;
   if (b && b.t > a.t) mix = THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1);
+
   tmpC1.set(a.color);
   tmpC2.set(b.color || a.color);
-  tunnelState.primary.copy(tmpC1).lerp(tmpC2, mix);
+  const basePrimary = tmpC1.clone().lerp(tmpC2, mix);
+
   tmpC1.set(a.accent);
   tmpC2.set(b.accent || a.accent);
-  tunnelState.accent.copy(tmpC1).lerp(tmpC2, mix);
-  tunnelState.speed = THREE.MathUtils.lerp(a.speed, (b?.speed ?? a.speed), mix);
-  tunnelState.boost = THREE.MathUtils.lerp(a.boost, (b?.boost ?? a.boost), mix);
+  const baseAccent = tmpC1.clone().lerp(tmpC2, mix);
+
+  const beatMix = THREE.MathUtils.clamp(audioState.flash * 0.85 + audioState.bass * 0.30, 0, 1);
+  const shimmerMix = THREE.MathUtils.clamp(audioState.high * 0.45 + audioState.level * 0.20, 0, 0.65);
+  const hueDrift = Math.sin(audioState.phase * 1.7) * 0.010 + Math.sin(audioState.phase * 0.53) * 0.006;
+
+  tmpC3.copy(basePrimary).lerp(baseAccent, 0.22 + beatMix * 0.58);
+  tmpC3.offsetHSL(hueDrift, 0.0, audioState.flash * 0.05 + audioState.level * 0.02);
+
+  tmpC4.copy(baseAccent).lerp(basePrimary, 0.18 + audioState.mid * 0.22);
+  tmpC4.lerp(new THREE.Color(0xffffff), 0.05 + shimmerMix * 0.24);
+  tmpC4.offsetHSL(-hueDrift * 0.65, 0.0, audioState.high * 0.04);
+
+  tunnelState.primary.copy(tmpC3);
+  tunnelState.accent.copy(tmpC4);
+  tunnelState.speed = THREE.MathUtils.lerp(a.speed, (b?.speed ?? a.speed), mix) + audioState.bass * 0.10;
+  tunnelState.boost = THREE.MathUtils.lerp(a.boost, (b?.boost ?? a.boost), mix) + audioState.flash * 0.12 + audioState.level * 0.05;
 }
 
 function updateTunnel(dt, t){
   updateTunnelPalette(t);
 
   const pulse = 1.0 + frameEnergy * 0.45;
-  tunnelBackdrop.material.color.copy(tunnelState.primary);
-  tunnelBackdrop.material.opacity = 0.0;
+  tunnelBackdrop.material.color.copy(tunnelState.primary).lerp(tunnelState.accent, 0.18 + audioState.high * 0.18);
+  tunnelBackdrop.material.opacity = 0.08 + tunnelState.boost * 0.05 + audioState.flash * 0.12;
   tunnelBackdrop.rotation.z = Math.sin(t * 0.07) * 0.05;
   tunnelBackdrop.scale.setScalar(1.0 + Math.sin(t * 0.35) * 0.015);
 
@@ -755,8 +848,8 @@ function updateTunnel(dt, t){
     streak.material.opacity = 0.03 + tunnelState.boost * 0.07 + frameEnergy * 0.10 + Math.pow(zNorm, 1.35) * 0.28;
   }
 
-  starMat.color.copy(tunnelState.accent);
-  starMat.opacity = 0.32 + tunnelState.boost * 0.12;
+  starMat.color.copy(tunnelState.accent).lerp(tunnelState.primary, 0.25 + audioState.high * 0.20);
+  starMat.opacity = 0.28 + tunnelState.boost * 0.10 + audioState.flash * 0.08;
 }
 
 // ==================== CONTROLLERS / HÁPTICA ====================
@@ -855,6 +948,9 @@ const alive     = new Float32Array(MAX_PARTICLES);
 const maxLife   = new Float32Array(MAX_PARTICLES);
 const velocity  = new Float32Array(MAX_PARTICLES * 3);
 const attractMul = new Float32Array(MAX_PARTICLES);
+const particleSide = new Uint8Array(MAX_PARTICLES);
+const particleHueJitter = new Float32Array(MAX_PARTICLES);
+const particleLightJitter = new Float32Array(MAX_PARTICLES);
 const targetX = new Float32Array(MAX_PARTICLES);
 const targetY = new Float32Array(MAX_PARTICLES);
 const targetZ = new Float32Array(MAX_PARTICLES);
@@ -987,15 +1083,16 @@ function pickTarget(isRight){ return isRight ? cornerTR : cornerTL; }
 function pickMobileSpawn(isRight){ return isRight ? cornerBR : cornerBL; }
 
 function setParticleColor(i, isRightSide){
-  if (isRightSide){
-    colors[i*3+0] = 0.48 + Math.random()*0.08;
-    colors[i*3+1] = 0.88 + Math.random()*0.10;
-    colors[i*3+2] = 0.56 + Math.random()*0.08;
-  } else {
-    colors[i*3+0] = 0.96 + Math.random()*0.04;
-    colors[i*3+1] = 0.78 + Math.random()*0.08;
-    colors[i*3+2] = 0.30 + Math.random()*0.06;
-  }
+  const beatMix = THREE.MathUtils.clamp(audioState.flash * 0.80 + audioState.level * 0.25, 0, 1);
+  const shimmer = THREE.MathUtils.clamp(audioState.high * 0.55, 0, 0.55);
+  tmpC1.copy(isRightSide ? tunnelState.accent : tunnelState.primary);
+  tmpC2.copy(isRightSide ? tunnelState.primary : tunnelState.accent);
+  tmpC1.lerp(tmpC2, isRightSide ? (0.30 + beatMix * 0.45) : (0.16 + beatMix * 0.58));
+  tmpC1.lerp(new THREE.Color(0xffffff), 0.04 + shimmer * 0.18);
+  tmpC1.offsetHSL((particleHueJitter[i] - 0.5) * 0.05 + Math.sin(audioState.phase + i * 0.17) * 0.005, 0.0, particleLightJitter[i] * 0.030 + beatMix * 0.06);
+  colors[i*3+0] = tmpC1.r;
+  colors[i*3+1] = tmpC1.g;
+  colors[i*3+2] = tmpC1.b;
 }
 
 function spawnParticlesFrom(worldPos, isRightSide){
@@ -1006,6 +1103,9 @@ function spawnParticlesFrom(worldPos, isRightSide){
     alive[i] = P_LIFE;
     maxLife[i] = P_LIFE;
     attractMul[i] = 1.0;
+    particleSide[i] = isRightSide ? 1 : 0;
+    particleHueJitter[i] = Math.random();
+    particleLightJitter[i] = Math.random();
 
     const sx = worldPos.x + (Math.random()-0.5)*0.04;
     const sy = worldPos.y + (Math.random()-0.5)*0.04;
@@ -1069,6 +1169,7 @@ function updateParticles(dt){
     positions[i*3+0] += velocity[i*3+0] * dt * PARTICLE_SPEED;
     positions[i*3+1] += velocity[i*3+1] * dt * PARTICLE_SPEED;
     positions[i*3+2] += velocity[i*3+2] * dt * PARTICLE_SPEED;
+    setParticleColor(i, particleSide[i] === 1);
     velocity[i*3+0] *= (1 - dt*1.05);
     velocity[i*3+1] *= (1 - dt*0.55);
     velocity[i*3+2] *= (1 - dt*1.05);
@@ -1078,6 +1179,7 @@ function updateParticles(dt){
     }
   }
   pGeom.attributes.position.needsUpdate = true;
+  pGeom.attributes.color.needsUpdate = true;
   pGeom.attributes.aAlpha.needsUpdate = true;
 }
 
@@ -1216,6 +1318,14 @@ function resetExperienceState(){
   resetMidiHapticsState();
   resetParticlesState();
   frameEnergy = 0;
+  audioState.bass = 0;
+  audioState.mid = 0;
+  audioState.high = 0;
+  audioState.level = 0;
+  audioState.flash = 0;
+  audioState.onset = 0;
+  audioState.phase = 0;
+  lastBass = 0;
   for (let i=0;i<rings.length;i++) {
     rings[i].position.z = RING_NEAR_Z - i * RING_SPACING;
     rings[i].scale.setScalar(THREE.MathUtils.lerp(1.28, 0.18, i / Math.max(1, rings.length - 1)));
@@ -1239,6 +1349,7 @@ renderer.setAnimationLoop(() => {
   tickHaptics(t);
 
   frameEnergy *= Math.exp(-dt * 3.2);
+  updateAudioReactive(dt);
   drawGradient(`#${tunnelState.primary.getHexString()}`, `#${tunnelState.accent.getHexString()}`, frameEnergy);
   frameMat.opacity = 0.0;
 
@@ -1288,7 +1399,9 @@ btnStart.onclick = async () => {
 
     video.muted = false;
     video.volume = 1.0;
+    try{ await ensureAudioReactive(); }catch(e){ log("⚠️ Audio reactivo no disponible: " + (e?.message || e)); }
     await video.play();
+    if (audioCtx?.state === "suspended") { try { await audioCtx.resume(); } catch {} }
     if (SECOND_VIDEO_URL) {
       try{ await videoVertical.play(); }catch(e){ log("⚠️ El vídeo vertical no pudo iniciarse: " + (e?.message || e)); }
     }
