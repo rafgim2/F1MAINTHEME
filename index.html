@@ -87,7 +87,7 @@ const COLOR_PALETTE = [
 ];
 
 function getPaletteBlend(t){
-  const period = 4.0;
+  const period = 5.0;
   const transition = 1.0;
   const cyclePos = ((t % period) + period) % period;
   const baseIndex = Math.floor(t / period) % COLOR_PALETTE.length;
