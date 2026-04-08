@@ -91,6 +91,15 @@ scene.fog = new THREE.Fog(0x03060b, 18, 145);
 const camera = new THREE.PerspectiveCamera(92, innerWidth/innerHeight, 0.1, 180);
 camera.position.set(0, 1.6, 2);
 
+const passthroughDarkener = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.24, depthWrite: false, depthTest: false, toneMapped: false })
+);
+passthroughDarkener.position.set(0, 0, -0.55);
+passthroughDarkener.renderOrder = 9999;
+camera.add(passthroughDarkener);
+scene.add(camera);
+
 scene.add(new THREE.HemisphereLight(0xffffff, 0x111111, 1.2));
 
 // ==================== VIDEO + AUDIO ====================
@@ -128,36 +137,50 @@ video.addEventListener("ended", async () => {
 });
 
 // ==================== VÍDEO + MARCO ====================
-function makeRoundedOpacityMask(size = 512, r = 32){
+function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
-  ctx.clearRect(0,0,size,size);
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
 
-  const x = 0, y = 0, w = size, h = size;
-  ctx.beginPath();
-  ctx.moveTo(x+r, y);
-  ctx.lineTo(x+w-r, y);
-  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-  ctx.lineTo(x+w, y+h-r);
-  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-  ctx.lineTo(x+r, y+h);
-  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-  ctx.lineTo(x, y+r);
-  ctx.quadraticCurveTo(x, y, x+r, y);
-  ctx.closePath();
-  ctx.save();
-  ctx.clip();
+  const half = size * 0.5;
+  const innerHalfW = half;
+  const innerHalfH = half;
 
-  const grd = ctx.createLinearGradient(0, 0, 0, size);
-  grd.addColorStop(0.00, "rgb(128,128,128)");   // 50% opacidad arriba
-  grd.addColorStop(0.42, "rgb(128,128,128)");   // mantiene la mitad superior semitransparente
-  grd.addColorStop(0.58, "rgb(255,255,255)");   // transición suave en la zona media
-  grd.addColorStop(1.00, "rgb(255,255,255)");   // 100% opaco abajo
-  ctx.fillStyle = grd;
-  ctx.fillRect(0,0,size,size);
-  ctx.restore();
+  function sdRoundedRect(px, py, hw, hh, rad){
+    const qx = Math.abs(px) - (hw - rad);
+    const qy = Math.abs(py) - (hh - rad);
+    const ox = Math.max(qx, 0.0);
+    const oy = Math.max(qy, 0.0);
+    return Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0.0) - rad;
+  }
 
+  for (let y = 0; y < size; y++){
+    const py = (y + 0.5) - half;
+    const topToBottom = y / (size - 1);
+    let verticalAlpha;
+    if (topToBottom <= 0.42) verticalAlpha = 0.50;
+    else if (topToBottom >= 0.72) verticalAlpha = 1.0;
+    else {
+      const t = (topToBottom - 0.42) / (0.72 - 0.42);
+      verticalAlpha = 0.50 + t * 0.50;
+    }
+
+    for (let x = 0; x < size; x++){
+      const px = (x + 0.5) - half;
+      const d = sdRoundedRect(px, py, innerHalfW, innerHalfH, r);
+      const edgeAlpha = 1.0 - THREE.MathUtils.smoothstep(d, 0.0, feather);
+      const a = Math.max(0, Math.min(1, edgeAlpha * verticalAlpha));
+      const idx = (y * size + x) * 4;
+      data[idx] = 255;
+      data[idx + 1] = 255;
+      data[idx + 2] = 255;
+      data[idx + 3] = Math.round(a * 255);
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
@@ -167,7 +190,7 @@ function makeRoundedOpacityMask(size = 512, r = 32){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedOpacityMask(512, 30);
+const videoMaskTex = makeRoundedOpacityMask(512, 34, 52);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -176,7 +199,7 @@ const screen = new THREE.Mesh(
     alphaMap: videoMaskTex,
     transparent: true,
     opacity: 1.0,
-    alphaTest: 0.02,
+    alphaTest: 0.003,
   })
 );
 screen.position.set(0, 1.52, -1.55);
@@ -1043,7 +1066,7 @@ renderer.setAnimationLoop(() => {
 
   frameEnergy *= Math.exp(-dt * 3.2);
   drawGradient(`#${tunnelState.primary.getHexString()}`, `#${tunnelState.accent.getHexString()}`, frameEnergy);
-  frameMat.opacity = 0.76 + frameEnergy * 0.18;
+  frameMat.opacity = 0.0;
 
   updateTunnel(dt, t);
   updateParticles(dt);
@@ -1094,7 +1117,7 @@ btnStart.onclick = async () => {
     await video.play();
 
     screen.visible = true;
-    frameGroup.visible = true;
+    frameGroup.visible = false;
     points.visible = true;
     tunnelRoot.visible = true;
 
