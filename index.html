@@ -192,7 +192,7 @@ function makeRoundedOpacityMask(size = 512, r = 32, feather = 42){
 
 const screenW = 1.6;
 const screenH = 0.9;
-const videoMaskTex = makeRoundedOpacityMask(1024, 72, 120);
+const videoMaskTex = makeRoundedOpacityMask(1024, 72, 80);
 
 const screen = new THREE.Mesh(
   new THREE.PlaneGeometry(screenW, screenH),
@@ -208,7 +208,7 @@ const screen = new THREE.Mesh(
   })
 );
 screen.renderOrder = 10001;
-screen.position.set(0, 1.52, -1.55);
+screen.position.set(0, 1.46, -1.55);
 screen.renderOrder = 10001;
 scene.add(screen);
 
